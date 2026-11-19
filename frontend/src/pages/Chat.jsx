@@ -1,183 +1,218 @@
-import { useState, useRef, useEffect } from "react"
-import { useParams, useLocation, useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { Link, useLocation, useParams } from "react-router-dom"
 import client from "../api/client"
 import ChatMessage from "../components/ChatMessage"
 import GraphView from "../components/GraphView"
+import SourceExplorer from "../components/SourceExplorer"
 import BugPanel from "../components/BugPanel"
+import OverviewView from "../components/OverviewView"
 import styles from "./Chat.module.css"
 
 export default function Chat() {
   const { repoId } = useParams()
-  const { state } = useLocation()
-  const navigate = useNavigate()
-  const summary = state?.summary
-  const graphData = state?.graph
-  const bugs = state?.bugs
-
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      text: `Repo loaded. ${summary ? `Found ${summary.total_files} files and ${summary.total_edges} relationships.` : ""} ${bugs?.total ? `Detected ${bugs.errors} errors and ${bugs.warnings} warnings.` : ""} Ask me anything about this codebase.`,
-    },
-  ])
-  const [input, setInput] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState("chat")
-  const [selectedNode, setSelectedNode] = useState(null)
-  const bottomRef = useRef(null)
+  const location = useLocation()
+  const matchingLocationState =
+    location.state?.repo_id === repoId ? location.state : null
+  const [analysis, setAnalysis] = useState(matchingLocationState)
+  const [loading, setLoading] = useState(!matchingLocationState)
+  const [error, setError] = useState("")
+  const [activeTab, setActiveTab] = useState("overview")
+  const [messages, setMessages] = useState([])
+  const [question, setQuestion] = useState("")
+  const [asking, setAsking] = useState(false)
+  const [selectedFile, setSelectedFile] = useState("")
+  const [selectedLine, setSelectedLine] = useState(1)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
-
-  async function handleSend(e) {
-    e.preventDefault()
-    if (!input.trim() || loading) return
-
-    const question = input.trim()
-    setInput("")
-    setMessages(prev => [...prev, { role: "user", text: question }])
-    setLoading(true)
-
-    try {
-      const res = await client.post("/ask", {
-        repo_id: repoId,
-        question,
-        summary,
-      })
-      setMessages(prev => [
-        ...prev,
-        {
-          role: "assistant",
-          text: res.data.answer,
-          chunks: res.data.context_chunks,
-        },
-      ])
-    } catch (err) {
-      setMessages(prev => [
-        ...prev,
-        {
-          role: "assistant",
-          text: "Error: " + (err.response?.data?.detail || "Something went wrong"),
-          isError: true,
-        },
-      ])
-    } finally {
+    if (location.state?.repo_id === repoId) {
+      setAnalysis(location.state)
       setLoading(false)
+      return
+    }
+    let active = true
+    client.get(`/repositories/${repoId}`)
+      .then(({ data }) => {
+        if (active) setAnalysis(data)
+      })
+      .catch(err => {
+        if (active) setError(err.response?.data?.detail || "Unable to load analysis")
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => { active = false }
+  }, [repoId, location.state])
+
+  useEffect(() => {
+    const firstFile = analysis?.graph?.nodes?.[0]?.id
+    if (firstFile && !selectedFile) setSelectedFile(firstFile)
+  }, [analysis, selectedFile])
+
+  async function askQuestion(text) {
+    const nextQuestion = text?.trim() || question.trim()
+    if (!nextQuestion || asking) return
+    setActiveTab("chat")
+    setAsking(true)
+    setQuestion("")
+    setMessages(current => [...current, { role: "user", text: nextQuestion }])
+    try {
+      const { data } = await client.post("/ask", {
+        repo_id: repoId,
+        question: nextQuestion,
+        summary: analysis?.summary,
+        context: {
+          summary: analysis?.summary,
+          overview: analysis?.overview,
+          graph: analysis?.graph,
+        },
+      })
+      setMessages(current => [...current, {
+        role: "assistant",
+        text: data.answer,
+        chunks: data.context_chunks,
+      }])
+    } catch (err) {
+      setMessages(current => [...current, {
+        role: "assistant",
+        text: err.response?.data?.detail || "Unable to answer that question.",
+        isError: true,
+      }])
+    } finally {
+      setAsking(false)
     }
   }
 
-  function handleNodeClick(nodeData) {
-    setSelectedNode(nodeData)
-    setActiveTab("chat")
-    setInput(`Tell me about the file ${nodeData.label}`)
+  function handleSubmit(event) {
+    event.preventDefault()
+    askQuestion()
   }
 
-  function handleAskAboutBug(finding) {
-    setActiveTab("chat")
-    setInput(`Explain this issue and how to fix it: [${finding.rule}] in ${finding.file.split("/").pop()} line ${finding.line}: ${finding.message}`)
+  function openSource(file, line = 1) {
+    setSelectedFile(file)
+    setSelectedLine(line)
+    setActiveTab("source")
   }
 
-  const suggestions = [
-    "What does this project do?",
-    "Where is the main entry point?",
-    "What are the most important files?",
-    "Are there any potential bugs?",
-  ]
+  if (loading) return <div className={styles.loading}>Loading analysis workspace…</div>
+  if (error) return <div className={styles.error}>{error}</div>
+  if (!analysis) return null
+
+  const files = analysis.graph?.nodes || []
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <button className={styles.back} onClick={() => navigate("/")}>← Back</button>
-        <div className={styles.tabs}>
-          <button
-            className={activeTab === "chat" ? styles.activeTab : styles.tab}
-            onClick={() => setActiveTab("chat")}
-          >
-            Chat
-          </button>
-          <button
-            className={activeTab === "graph" ? styles.activeTab : styles.tab}
-            onClick={() => setActiveTab("graph")}
-          >
-            Graph
-            {graphData?.nodes?.length > 0 && (
-              <span className={styles.badge}>{graphData.nodes.length}</span>
-            )}
-          </button>
-          <button
-            className={activeTab === "bugs" ? styles.activeTab : styles.tab}
-            onClick={() => setActiveTab("bugs")}
-          >
-            Bugs
-            {bugs?.errors > 0 && (
-              <span className={styles.badgeRed}>{bugs.errors}</span>
-            )}
-            {bugs?.warnings > 0 && !bugs?.errors && (
-              <span className={styles.badgeYellow}>{bugs.warnings}</span>
-            )}
-          </button>
+        <Link className={styles.brand} to="/">
+          <span className={styles.brandMark}>R</span>
+          <span>repolens</span>
+        </Link>
+        <div className={styles.stats}>
+          <span>{analysis.summary?.total_files || files.length} files</span>
+          <span>{analysis.summary?.total_edges || 0} relationships</span>
+          <span>{analysis.chunks_stored || 0} indexed chunks</span>
         </div>
-        <div className={styles.repoTag}>repo: {repoId}</div>
       </header>
 
-      {activeTab === "chat" && (
-        <div className={styles.chatPane}>
-          {selectedNode && (
-            <div className={styles.nodeCtx}>
-              Asking about: <span>{selectedNode.label}</span>
-              <button onClick={() => setSelectedNode(null)}>×</button>
-            </div>
-          )}
-
-          <div className={styles.messages}>
-            {messages.map((msg, i) => (
-              <ChatMessage key={i} message={msg} />
-            ))}
-            {loading && (
-              <div className={styles.thinking}>
-                <span /><span /><span />
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-
-          {messages.length === 1 && (
-            <div className={styles.suggestions}>
-              {suggestions.map(s => (
-                <button key={s} className={styles.suggestion} onClick={() => setInput(s)}>
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <form className={styles.inputRow} onSubmit={handleSend}>
-            <input
-              className={styles.input}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder="Ask about this codebase..."
-              disabled={loading}
-            />
-            <button className={styles.send} type="submit" disabled={loading || !input.trim()}>
-              Send
+      <div className={styles.body}>
+        <nav className={styles.sidebar} aria-label="Analysis views">
+          {[
+            ["overview", "Overview", "01"],
+            ["chat", "Chat", "02"],
+            ["graph", "Architecture", "03"],
+            ["source", "Source", "04"],
+            ["bugs", "Issues", "05"],
+          ].map(([tab, label, number]) => (
+            <button
+              key={tab}
+              type="button"
+              className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ""}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              <span>{number}</span>{label}
             </button>
-          </form>
-        </div>
-      )}
+          ))}
+        </nav>
 
-      {activeTab === "graph" && (
-        <div className={styles.graphPane}>
-          <GraphView graphData={graphData} onNodeClick={handleNodeClick} />
-        </div>
-      )}
+        <main className={styles.main}>
+          {activeTab === "overview" && (
+            <OverviewView
+              repoId={repoId}
+              onOpenSource={openSource}
+              onOpenArchitecture={() => setActiveTab("graph")}
+            />
+          )}
 
-      {activeTab === "bugs" && (
-        <div className={styles.bugsPane}>
-          <BugPanel bugs={bugs} onAskAboutBug={handleAskAboutBug} />
-        </div>
-      )}
+          {activeTab === "chat" && (
+            <section className={styles.chat}>
+              <div className={styles.messages}>
+                {messages.length === 0 ? (
+                  <div className={styles.emptyChat}>
+                    <span className={styles.emptyEyebrow}>REPOSITORY ASSISTANT</span>
+                    <strong>What would you like to understand?</strong>
+                    <p>Questions are answered with citations from the indexed source code.</p>
+                    <div className={styles.suggestions}>
+                      {[
+                        "Explain the overall architecture",
+                        "Which files are the main entry points?",
+                        "Summarize the main risks",
+                      ].map(prompt => (
+                        <button key={prompt} type="button" onClick={() => askQuestion(prompt)}>
+                          {prompt}<span>→</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : messages.map((message, index) => (
+                  <ChatMessage
+                    key={index}
+                    message={message}
+                    onOpenSource={openSource}
+                  />
+                ))}
+              </div>
+              <form className={styles.composer} onSubmit={handleSubmit}>
+                <input
+                  className={styles.input}
+                  value={question}
+                  onChange={event => setQuestion(event.target.value)}
+                  placeholder="Ask about architecture, code, or risks…"
+                  aria-label="Question"
+                />
+                <button className={styles.send} type="submit" disabled={asking || !question.trim()}>
+                  {asking ? "Thinking…" : "Send"}
+                </button>
+              </form>
+            </section>
+          )}
+
+          {activeTab === "graph" && (
+            <GraphView
+              graphData={analysis.graph}
+              onNodeClick={node => openSource(node.path, 1)}
+            />
+          )}
+
+          {activeTab === "source" && (
+            <SourceExplorer
+              repoId={repoId}
+              files={files}
+              selectedFile={selectedFile}
+              selectedLine={selectedLine}
+              onSelectFile={(file, line) => { setSelectedFile(file); setSelectedLine(line) }}
+              onAskAboutFile={file => askQuestion(`Explain the purpose and behavior of ${file}.`)}
+            />
+          )}
+
+          {activeTab === "bugs" && (
+            <BugPanel
+              bugs={analysis.bugs}
+              onAskAboutBug={finding => askQuestion(
+                `Explain this issue and suggest a fix: ${finding.rule} in ${finding.file}:${finding.line}: ${finding.message}`
+              )}
+            />
+          )}
+        </main>
+      </div>
     </div>
   )
 }

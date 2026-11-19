@@ -36,7 +36,7 @@ export default function BugPanel({ bugs, onAskAboutBug }) {
     try {
       const res = await client.post("/bugs/explain", { findings: bugs.findings })
       setExplanation(res.data.explanation)
-    } catch (e) {
+    } catch {
       setExplanation("Failed to get explanation.")
     } finally {
       setLoadingExplain(false)

@@ -1,346 +1,658 @@
-# 🚀 Repo Analyzer
+# RepoLens
 
-> Understand any codebase instantly.
+RepoLens is an evidence-first codebase intelligence workspace. It analyzes a public GitHub repository or ZIP archive, stores a persistent source snapshot, maps supported files and dependencies, indexes source chunks, runs code-quality and optional security checks, and provides repository-aware chat grounded in retrieved evidence.
 
-An AI-powered developer tool that lets you explore, analyze, and query any GitHub repository using natural language — without reading a single file manually.
+## Table of contents
 
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18+-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
-[![ChromaDB](https://img.shields.io/badge/ChromaDB-FF6B35?style=flat-square)](https://trychroma.com)
-[![Groq](https://img.shields.io/badge/Groq-LLaMA_3-F55036?style=flat-square)](https://groq.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+- [Core capabilities](#core-capabilities)
+- [Application architecture](#application-architecture)
+- [Technology stack](#technology-stack)
+- [Repository structure](#repository-structure)
+- [Local development](#local-development)
+- [Environment variables](#environment-variables)
+- [Docker deployment](#docker-deployment)
+- [Analysis workflow](#analysis-workflow)
+- [API reference](#api-reference)
+- [Frontend views](#frontend-views)
+- [GitHub App integration](#github-app-integration)
+- [Security and coverage scanning](#security-and-coverage-scanning)
+- [Redis workers](#redis-workers)
+- [Tests and CI](#tests-and-ci)
+- [Deployment checks](#deployment-checks)
+- [Limitations](#limitations)
+- [Troubleshooting](#troubleshooting)
 
----
+## Core capabilities
 
-## 📌 Overview
+- Analyze GitHub repositories and ZIP uploads
+- Track ingestion jobs and analysis phases
+- Persist source snapshots and graph metadata
+- Semantic search over code chunks
+- Repository-aware LLM chat with source citations
+- Architecture and project-structure overview
+- Import and inferred symbol-call relationship analysis
+- Entry-point and central-file detection
+- Code-health scoring and prioritized findings
+- Test-framework and coverage-report discovery
+- LCOV, Cobertura XML, and Istanbul JSON parsing
+- Semgrep, Gitleaks, and pip-audit integration
+- Git branch and recent commit metadata
+- GitHub pull-request reading and review publishing
+- Markdown, PDF, and shared-workspace reports
+- Multi-repository side-by-side comparison
+- Optional API-key authentication
+- Redis-backed queues or local FastAPI background tasks
 
-Repo Analyzer is a full-stack AI system designed to eliminate the friction of onboarding into unfamiliar codebases.
+## Application architecture
 
-Instead of manually reading dozens of files, you can:
+```text
+Browser
+  |
+  | HTTP
+  v
+React + Vite frontend
+  |
+  | /api requests
+  v
+FastAPI backend
+  |
+  +--> Job tracker
+  +--> Git/ZIP ingestion
+  +--> Tree-sitter parsing
+  +--> NetworkX graph
+  +--> Sentence Transformers embeddings
+  +--> Chroma vector collection
+  +--> Groq repository chat
+  +--> Static and optional security scanners
+  |
+  +--> Persistent workspace JSON and source files
+  +--> Redis queue in distributed deployments
+```
 
-- Ask questions in plain English
-- Visualize file architecture and dependencies
-- Detect bugs and code smells automatically
+The backend creates a unique repository workspace for each completed analysis. The workspace contains analysis metadata and stored source files. Chroma stores semantic code chunks separately.
 
-It combines **AST parsing**, **dependency graphs**, **vector search**, and **LLM reasoning** to give accurate, context-aware answers grounded in real source code.
-
----
-
-## ✨ Key Features
-
-### 🔍 Intelligent Code Understanding
-- AST-based parsing using **tree-sitter**
-- Extracts functions, classes, and imports with line-level precision
-- Supports Python, JavaScript, TypeScript, Java, Rust, C/C++
-- Fallback to raw text parsing for HTML, CSS, Markdown, JSON, YAML
-
-### 🧠 AI-Powered Q&A (RAG Pipeline)
-- Semantic search using **ChromaDB** vector store
-- Context-aware answers using **LLaMA 3** via Groq
-- Source-backed responses — every answer shows the exact code chunks used
-- Intent detection tailors prompts for architecture, bug, security, and function queries
-
-### 🕸️ Dependency Graph Visualization
-- Built with **NetworkX** + **React Flow**
-- Interactive graph of file import relationships
-- Identifies:
-  - Hub files (most depended on)
-  - Isolated modules
-  - Cross-module dependencies
-- Click any node to ask the AI about that specific file
-
-### 🐛 Built-in Bug Detection
-- Static analysis with 11 custom rules — no external linter needed
-- Detects:
-  - Hardcoded secrets and credentials
-  - Poor practices (bare except, mutable defaults, loose equality)
-  - Debug leftovers (print statements, console.log)
-  - Unresolved TODO/FIXME comments
-- AI-generated explanations and fix suggestions per finding
-
-### 📦 Flexible Input
-- Analyze via:
-  - **GitHub URL** — paste any public repo link
-  - **ZIP upload** — upload a local project archive
-
----
-
-## 🏗️ Tech Stack
+## Technology stack
 
 ### Frontend
-| Library | Purpose |
-|---|---|
-| React + Vite | UI framework and build tool |
-| React Flow | Interactive dependency graph |
-| React Router | Client-side routing |
-| Axios | HTTP client |
-| react-syntax-highlighter | Code chunk display |
+
+- React 18
+- Vite
+- React Router
+- Axios
+- React Markdown and remark-gfm
+- React Syntax Highlighter
 
 ### Backend
-| Library | Purpose |
-|---|---|
-| FastAPI | REST API framework |
-| tree-sitter | AST parsing (multi-language) |
-| NetworkX | Dependency graph construction |
-| GitPython | Remote repo cloning |
 
-### AI / Data
-| Library | Purpose |
-|---|---|
-| ChromaDB | Local vector store |
-| sentence-transformers | Local embeddings (no API key needed) |
-| Groq API | LLM inference (LLaMA 3) |
+- Python 3.11
+- FastAPI
+- Pydantic settings
+- GitPython
+- NetworkX
+- ChromaDB
+- Sentence Transformers
+- Groq SDK
+- Tree-sitter
+- ReportLab
+- Redis Python client
+- PyJWT
 
----
+## Repository structure
 
-## 🚀 Getting Started
+```text
+backend/
+  app/
+    main.py                 FastAPI application and middleware
+    core/config.py          Environment-backed settings
+    routes/                 API route modules
+    services/
+      ingestion.py          Git/ZIP intake and repository limits
+      parser.py             Tree-sitter parsing
+      chunker.py            Source chunk generation
+      graph.py              Import and call graph creation
+      coverage.py           Test and coverage analysis
+      scanner.py            Semgrep, Gitleaks, pip-audit integration
+      llm.py                Groq prompts and repository chat
+      jobs.py               File/Redis job state
+      queue.py              Redis/local queue dispatch
+      workers.py            Redis worker entry point
+      repository_store.py   Workspace persistence and sharing
+      github_integration.py GitHub App/PAT operations
+      comparison.py         Multi-repository calculations
+  tests/                    Backend tests
+  Dockerfile
+  requirements.txt
 
-### Prerequisites
+frontend/
+  src/
+    pages/                  Home, chat, compare, shared workspace
+    components/             Overview, source, graph, chat, bugs
+    api/client.js           Axios configuration
+  Dockerfile
+  nginx.conf
+  package.json
 
-- Python 3.10+
-- Node.js 18+
-- A free Groq API key → [console.groq.com](https://console.groq.com)
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/repo-analyzer.git
-cd repo-analyzer
+docker-compose.yml
+.github/workflows/ci.yml
 ```
 
-### 2. Backend setup
+## Local development
 
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate      # Linux / macOS
-# venv\Scripts\activate       # Windows
+### Requirements
 
-pip install -r requirements.txt
+- Python 3.11 or newer
+- Node.js 20 or newer
+- Git
+- A Groq API key for repository chat
+
+Optional:
+
+- Docker with Docker Compose
+- Redis
+- Semgrep
+- Gitleaks
+- pip-audit
+
+### 1. Create a Python environment
+
+From the repository root:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r backend\requirements.txt
 ```
 
-Create `.env`:
+### 2. Configure the backend
 
-```env
-GROQ_API_KEY=your_groq_api_key_here
+```powershell
+Copy-Item backend\.env.example backend\.env
 ```
 
-Run the server:
+Set at least:
 
-```bash
-uvicorn app.main:app --reload --port 8000
+```dotenv
+GROQ_API_KEY=your_groq_api_key
 ```
 
-Verify:
+### 3. Start the API
 
-```bash
-curl http://localhost:8000/health
-# {"status": "ok"}
+```powershell
+Set-Location backend
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-### 3. Frontend setup
+Health endpoints:
 
-```bash
-cd frontend
-npm install
+- `http://127.0.0.1:8000/health`
+- `http://127.0.0.1:8000/ready`
+- `http://127.0.0.1:8000/deployment`
+
+OpenAPI documentation:
+
+- `http://127.0.0.1:8000/docs`
+- `http://127.0.0.1:8000/redoc`
+
+### 4. Start the frontend
+
+Open another terminal:
+
+```powershell
+Set-Location frontend
+Copy-Item .env.example .env
+npm ci
 npm run dev
 ```
 
----
+Open `http://127.0.0.1:5173`.
 
-## 🧠 How It Works
+## Environment variables
 
-### 1. Ingestion Pipeline
+### Backend
 
-```
-GitHub URL / ZIP
-      ↓
-  Clone or extract repo
-      ↓
-  Walk files (filter by extension, skip noise)
-      ↓
-  tree-sitter AST parsing
-  → Functions, classes, imports extracted per file
-      ↓
-  NetworkX dependency graph
-  → Import relationships resolved between files
-      ↓
-  Smart chunking
-  → One chunk per function / class / import block
-      ↓
-  sentence-transformers embeddings (local)
-      ↓
-  ChromaDB vector store
-      ↓
-  Static bug detection
-```
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `GROQ_API_KEY` | empty | Enables repository chat and architecture summaries |
+| `APP_NAME` | `RepoLens API` | API title |
+| `ENVIRONMENT` | `development` | Environment name and production validation mode |
+| `CORS_ORIGINS` | localhost frontend origins | Comma-separated allowed browser origins |
+| `DATA_DIR` | `./data` | Workspaces and jobs storage |
+| `CHROMA_PATH` | `./data/chroma` | Chroma vector database location |
+| `MAX_UPLOAD_BYTES` | `104857600` | Maximum ZIP upload size |
+| `MAX_ZIP_MEMBERS` | `10000` | Maximum ZIP entries |
+| `MAX_ZIP_UNCOMPRESSED_BYTES` | `524288000` | Maximum uncompressed ZIP size |
+| `MAX_FILES_PER_REPO` | `5000` | Maximum supported source files |
+| `MAX_FILE_BYTES` | `1000000` | Maximum parsed file size |
+| `ALLOWED_GIT_HOSTS` | GitHub hosts | Allowed Git hostnames |
+| `API_KEYS` | empty | Optional comma-separated API keys |
+| `REDIS_URL` | empty | Redis queue connection |
+| `GITHUB_TOKEN` | empty | Optional PAT for GitHub pull requests |
+| `GITHUB_APP_ID` | empty | GitHub App ID |
+| `GITHUB_APP_PRIVATE_KEY` | empty | GitHub App PEM private key |
+| `GITHUB_APP_INSTALLATION_ID` | empty | GitHub App installation ID |
+| `GITHUB_WEBHOOK_SECRET` | empty | GitHub webhook signing secret |
+| `ENABLE_REAL_SCANNERS` | `false` | Enables Semgrep, Gitleaks, and pip-audit |
 
-### 2. Query Pipeline
+### Frontend
 
-```
-User question
-      ↓
-  Embed question (same local model)
-      ↓
-  ChromaDB similarity search → top-8 chunks
-      ↓
-  Intent detection (architecture / bug / security / function)
-      ↓
-  LLM prompt built with context + repo summary
-      ↓
-  Groq LLaMA 3 generates answer
-      ↓
-  Answer + source chunks returned to frontend
-```
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | `http://localhost:8000/api` | Backend API prefix |
+| `VITE_API_KEY` | empty | Optional `X-API-Key` value |
 
----
+Do not expose private keys or API secrets through `VITE_*` variables. Vite variables are delivered to the browser.
 
-## 🗂️ Project Structure
+## Docker deployment
 
-```
-repo-analyzer/
-├── backend/
-│   ├── app/
-│   │   ├── main.py                  # FastAPI app entry point
-│   │   ├── routes/
-│   │   │   ├── ingest.py            # /ingest/url  /ingest/zip  /ingest/debug
-│   │   │   └── ask.py               # /ask  /bugs/explain
-│   │   └── services/
-│   │       ├── ingestion.py         # Clone, extract, file walker
-│   │       ├── parser.py            # tree-sitter AST parsing
-│   │       ├── graph.py             # NetworkX graph builder
-│   │       ├── chunker.py           # Chunking strategy
-│   │       ├── embedder.py          # Local sentence-transformers
-│   │       ├── vector_store.py      # ChromaDB storage + retrieval
-│   │       ├── llm.py               # Groq LLM + prompt builder
-│   │       └── bug_detector.py      # Static analysis heuristics
-│   ├── requirements.txt
-│   └── .env
-│
-└── frontend/
-    ├── src/
-    │   ├── pages/
-    │   │   ├── Home.jsx             # Repo input (URL or ZIP)
-    │   │   └── Chat.jsx             # Chat / Graph / Bugs tabs
-    │   ├── components/
-    │   │   ├── ChatMessage.jsx      # Message bubbles + source chunks
-    │   │   ├── GraphView.jsx        # React Flow graph
-    │   │   └── BugPanel.jsx         # Bug findings + AI explain
-    │   └── api/
-    │       └── client.js            # Axios → localhost:8000
-    └── package.json
+Copy the backend environment file:
+
+```powershell
+Copy-Item backend\.env.example backend\.env
 ```
 
----
+Add at least `GROQ_API_KEY`, then run:
 
-## 📊 Example Use Cases
-
-| Use Case | How |
-|---|---|
-| 🔎 Understand a new codebase in minutes | Ask "What does this project do?" and "Where is the main entry point?" |
-| 🐛 Detect bugs without running code | Open the Bugs tab after ingestion for instant static analysis |
-| 📚 Learn how a feature is implemented | Ask "How is authentication handled?" or "Where is X called?" |
-| 🏗️ Visualize architecture instantly | Switch to the Graph tab and explore the dependency map |
-| 🔐 Audit for security issues | Ask "Are there any hardcoded secrets or security vulnerabilities?" |
-
----
-
-## 🛠️ API Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/ingest/url` | Clone and index a GitHub repo by URL |
-| `POST` | `/api/ingest/zip` | Upload and index a local ZIP file |
-| `POST` | `/api/ingest/debug` | List files that would be parsed (dry run) |
-| `POST` | `/api/ask` | Ask a question about an indexed repo |
-| `POST` | `/api/bugs/explain` | Get AI summary of bug findings |
-| `GET` | `/health` | Health check |
-
-### Example: ingest a repo
-
-```bash
-curl -X POST http://localhost:8000/api/ingest/url \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://github.com/realpython/flask-boilerplate"}'
+```powershell
+docker compose up --build
 ```
 
-### Example: ask a question
+Docker Compose starts:
 
-```bash
-curl -X POST http://localhost:8000/api/ask \
-  -H "Content-Type: application/json" \
-  -d '{
-    "repo_id": "a3f9c12b4e01",
-    "question": "Where is routing handled?"
-  }'
+- Redis
+- FastAPI backend
+- Redis worker
+- Production Nginx frontend
+
+Open:
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:8000`
+
+Stop the stack:
+
+```powershell
+docker compose down
 ```
 
----
+The data and Redis volumes can be retained or removed explicitly:
 
-## 🐛 Bug Detection Rules
-
-| Rule | Language | Severity |
-|---|---|---|
-| `hardcoded-secret` | Python, JS | 🔴 Error |
-| `mutable-default-arg` | Python | 🔴 Error |
-| `bare-except` | Python | 🟡 Warning |
-| `none-comparison` | Python | 🟡 Warning |
-| `long-function` | Python | 🟡 Warning |
-| `loose-equality` | JavaScript | 🟡 Warning |
-| `no-var` | JavaScript | 🟡 Warning |
-| `print-statement` | Python | 🔵 Info |
-| `console-log` | JavaScript | 🔵 Info |
-| `todo-comment` | All | 🔵 Info |
-| `long-line` | All | 🔵 Info |
-
----
-
-## ⚙️ Configuration
-
-```env
-# backend/.env
-GROQ_API_KEY=your_key_here
+```powershell
+docker compose down -v
 ```
 
-- **Embeddings** run fully locally using `all-MiniLM-L6-v2` — no API key needed, ~90MB download on first run
-- **Vector DB** stored locally in `backend/chroma_db/` — one collection per repo
-- **LLM model** can be changed in `backend/app/services/llm.py`:
+Production deployments should:
 
-```python
-MODEL = "llama3-8b-8192"        # Default: fast and free
-# MODEL = "llama3-70b-8192"     # Higher quality
-# MODEL = "mixtral-8x7b-32768"  # Larger context window
+- Set `ENVIRONMENT=production`
+- Set explicit `CORS_ORIGINS`
+- Set `API_KEYS`
+- Store secrets in Docker secrets or an external secret manager
+- Terminate TLS at a reverse proxy
+- Give Redis authentication and private-network isolation
+- Mount persistent storage for `/app/data`
+- Use multiple workers only with Redis enabled
+
+## Analysis workflow
+
+1. The user submits a GitHub URL or ZIP archive.
+2. The API creates a job and queues or starts a background task.
+3. The repository is cloned or extracted.
+4. Supported files are discovered and subject to size limits.
+5. Tree-sitter extracts functions, classes, imports, and calls.
+6. Source snapshots are persisted.
+7. NetworkX creates file and symbol relationships.
+8. Source chunks are embedded and stored in Chroma.
+9. Static findings and optional external scanners run.
+10. Test and coverage reports are discovered.
+11. Git history and overview metadata are stored.
+12. Groq produces an architecture summary when configured.
+13. The client polls job state and opens the repository workspace.
+
+## API reference
+
+### Health and configuration
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Process liveness |
+| `GET` | `/ready` | Data, Chroma, and Redis readiness |
+| `GET` | `/deployment` | Deployment configuration status |
+| `GET` | `/docs` | Swagger UI |
+| `GET` | `/redoc` | ReDoc documentation |
+
+### Ingestion
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/ingest/url` | Start URL analysis |
+| `POST` | `/api/ingest/zip` | Start ZIP analysis |
+| `POST` | `/api/ingest/debug` | Inspect files found before analysis |
+| `GET` | `/api/ingest/jobs/{job_id}` | Read analysis status and result |
+
+### Repository workspaces
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/repositories?limit=20&offset=0` | Paginate saved workspaces |
+| `GET` | `/api/repositories/{repo_id}` | Get complete analysis metadata |
+| `GET` | `/api/repositories/{repo_id}/overview` | Get AI summary, health, and structure |
+| `GET` | `/api/repositories/{repo_id}/source?path=...` | Read a stored source file |
+| `GET` | `/api/repositories/{repo_id}/coverage` | Get test and coverage analysis |
+| `GET` | `/api/repositories/{repo_id}/git` | Get branch and commit metadata |
+| `GET` | `/api/repositories/{repo_id}/report` | Download Markdown report |
+| `GET` | `/api/repositories/{repo_id}/report.pdf` | Download PDF report |
+| `POST` | `/api/repositories/{repo_id}/scan` | Run enabled external scanners |
+| `DELETE` | `/api/repositories/{repo_id}` | Delete workspace and vector collection |
+
+### Chat
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/ask` | Ask a repository-aware question |
+| `POST` | `/api/bugs/explain` | Summarize static findings with the LLM |
+
+Example:
+
+```json
+{
+  "repo_id": "workspace-id",
+  "question": "Explain the data flow through the ingestion pipeline",
+  "summary": {}
+}
 ```
 
----
+### Comparison
 
-## 🔧 Troubleshooting
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/repositories/compare` | Compare two to five workspaces |
+| `POST` | `/api/repositories/compare/report` | Download comparison Markdown |
 
-**Only one file found when ingesting**
-Use the debug endpoint to check which files are being picked up:
-```bash
-curl -X POST http://localhost:8000/api/ingest/debug \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://github.com/your/repo"}'
+Example:
+
+```json
+{
+  "repo_ids": ["repo-a", "repo-b"]
+}
 ```
 
-**tree-sitter import errors**
-Install language grammars manually:
-```bash
-pip install tree-sitter-python tree-sitter-javascript \
-            tree-sitter-typescript tree-sitter-java \
-            tree-sitter-rust tree-sitter-cpp
+### Sharing
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/repositories/{repo_id}/share` | Create a read-only share token |
+| `DELETE` | `/api/repositories/{repo_id}/share` | Revoke sharing |
+| `GET` | `/api/shared/{token}` | Read a shared analysis |
+
+Shared workspaces expose repository metadata but do not expose source-edit operations or private chat.
+
+## Frontend views
+
+### Home
+
+- GitHub URL ingestion
+- ZIP upload
+- Recent workspace history
+- Multi-repository comparison entry
+
+### Repository overview
+
+- AI architecture summary
+- Health score
+- Language and framework breakdown
+- Dependency metrics
+- Symbol-call metrics
+- Entry points
+- Central files
+- Test and coverage details
+- Prioritized findings
+- Git history
+- Pull requests
+- Sharing and report actions
+
+### Chat
+
+- Repository-wide questions
+- Retrieved source chunks
+- Markdown-formatted answers
+- Syntax-highlighted source citations
+- Open-source navigation
+
+### Architecture
+
+- Technology breakdown
+- Folder distribution
+- Entry points
+- Central files
+- Import and call relationships
+- Confidence labels for inferred edges
+
+### Source
+
+- Searchable file list
+- Syntax-highlighted source
+- Line highlighting
+- Ask-AI about the selected file
+
+### Issues
+
+- Severity filtering
+- Finding details
+- Snippets
+- AI issue explanations
+
+## GitHub App integration
+
+Create a GitHub App and set:
+
+- `GITHUB_APP_ID`
+- `GITHUB_APP_PRIVATE_KEY`
+- `GITHUB_APP_INSTALLATION_ID`
+- `GITHUB_WEBHOOK_SECRET`
+
+Configure the webhook URL:
+
+```text
+https://your-host/api/github/webhooks/github
 ```
 
-**CORS errors in browser**
-Make sure backend runs on port `8000` and frontend on `3000`. If you change either port, update `allow_origins` in `backend/app/main.py` and `baseURL` in `frontend/src/api/client.js`.
+Recommended permissions:
 
-**Groq rate limit errors**
-Reduce context size by changing `n_results=8` to `n_results=4` in `backend/app/services/vector_store.py`.
+- Pull requests: Read and write
+- Contents: Read-only
+- Metadata: Read-only
 
----
+Recommended events:
 
-## 📄 License
+- `pull_request`
+- `pull_request_review`
+- `installation`
 
-MIT License © 2025
+GitHub App endpoints:
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/repositories/{repo_id}/pulls` | List pull requests |
+| `GET` | `/api/repositories/{repo_id}/pulls/{pull_number}` | Read PR diff metadata |
+| `POST` | `/api/github/pull-requests/review` | Publish a review |
+| `POST` | `/api/github/webhooks/github` | Receive signed webhooks |
+
+Review events:
+
+- `COMMENT`
+- `APPROVE`
+- `REQUEST_CHANGES`
+
+For live review publishing, a real GitHub App private key and installation token must be configured.
+
+## Security and coverage scanning
+
+Set:
+
+```dotenv
+ENABLE_REAL_SCANNERS=true
+```
+
+Available scanners:
+
+| Tool | Purpose |
+| --- | --- |
+| Semgrep | Source-code vulnerability patterns |
+| Gitleaks | Secret and credential detection |
+| pip-audit | Python dependency vulnerabilities |
+
+Gitleaks and pip-audit are included in supported environment setups. Semgrep must be available on `PATH` or installed through a deployment-specific package.
+
+All scanner findings are normalized to:
+
+- File
+- Line
+- Severity
+- Rule
+- Message
+- Redacted snippet
+- Scanner source
+
+### Coverage support
+
+RepoLens discovers test frameworks and test files, then accepts:
+
+- LCOV: `lcov.info` or `.lcov`
+- Cobertura: `coverage.xml` or `cobertura.xml`
+- Istanbul: `coverage-final.json`
+
+Coverage is evidence-based. If no report is present, the UI reports that coverage is unavailable rather than estimating an unsupported percentage.
+
+## Redis workers
+
+Set:
+
+```dotenv
+REDIS_URL=redis://redis:6379/0
+```
+
+When Redis is configured:
+
+- API requests place analysis tasks in `repolens:queue`
+- Workers consume tasks from Redis
+- Job state is persisted in Redis
+- Failed tasks are retried up to three attempts
+- Interrupted processing records are requeued by the worker at startup
+
+Without Redis, the API uses FastAPI background tasks. This is suitable for local development but not multi-process horizontal scaling.
+
+Run a worker locally:
+
+```powershell
+Set-Location backend
+python -m app.workers
+```
+
+## Tests and CI
+
+### Backend
+
+```powershell
+Set-Location backend
+python -m pytest -q
+python -m compileall -q app tests
+python -m pip check
+```
+
+### Frontend
+
+```powershell
+Set-Location frontend
+npm run lint
+npm test
+npm run build
+```
+
+GitHub Actions runs frontend lint/tests/build and backend compile/tests/dependency/smoke validation.
+
+## Deployment checks
+
+| Endpoint | Purpose |
+| --- | --- |
+| `/health` | Process liveness |
+| `/ready` | Data directory, Chroma, and Redis readiness |
+| `/deployment` | Production configuration status |
+
+Example smoke test:
+
+```powershell
+curl.exe --fail http://127.0.0.1:8000/health
+curl.exe --fail http://127.0.0.1:8000/ready
+curl.exe --fail http://127.0.0.1:8000/deployment
+```
+
+The backend container runs as a non-root user. The frontend production image uses Nginx and serves the Vite SPA with API proxying.
+
+## Limitations
+
+- Redis worker state does not replace all process restart recovery; stale processing records are requeued at worker startup.
+- Import resolution is conservative and does not model every language runtime.
+- Symbol-call matching is evidence-based and may produce inferred rather than type-correct edges.
+- Static findings and heuristics are not a replacement for specialized security review.
+- Coverage discovery is report-based; tests are not executed inside the backend.
+- Repository chat quality depends on Groq availability and retrieved context.
+- GitHub App publishing requires valid credentials and permissions.
+- The API key mechanism is suitable for simple deployments, not a complete identity platform.
+- The public sharing mechanism is token-based and should not be used for confidential repositories.
+- Large repositories remain subject to configured file, upload, and token limits.
+
+## Troubleshooting
+
+### Backend cannot import GitPython
+
+Reinstall dependencies:
+
+```powershell
+python -m pip install -r backend\requirements.txt
+```
+
+### Chat returns a missing-key error
+
+Set `GROQ_API_KEY` in `backend/.env`, restart the backend, and confirm the value is not the placeholder `your_groq_api_key_here`.
+
+### Frontend cannot reach the backend
+
+Confirm `VITE_API_BASE_URL=http://localhost:8000/api` and the backend is running on port `8000`.
+
+### 401 responses
+
+Set `VITE_API_KEY` to the same value included in backend `API_KEYS`.
+
+### 404 after an API restart
+
+Redis or file-backed jobs should persist, but old jobs created before persistence changes cannot be recovered.
+
+### Port 8000 or 5173 is occupied
+
+Identify and stop only the process listening on that port:
+
+```powershell
+Get-NetTCPConnection -LocalPort 8000 -State Listen
+Stop-Process -Id <OwningProcess>
+```
+
+### Docker is unavailable
+
+Run the backend and frontend directly:
+
+```powershell
+Set-Location backend
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Then start the frontend in another terminal.
+
+### Markdown is rendering incorrectly
+
+Ensure `react-markdown` and `remark-gfm` are installed:
+
+```powershell
+Set-Location frontend
+npm ci
+npm run dev
+```

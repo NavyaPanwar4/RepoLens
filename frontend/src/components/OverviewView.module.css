@@ -1,0 +1,529 @@
+.page {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  background: #09111f;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  padding: 12px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: #111a2a;
+}
+
+.kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: #99aaff;
+  font-size: 9px;
+  letter-spacing: .14em;
+}
+
+.header h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 23px;
+  font-weight: 400;
+  letter-spacing: -.03em;
+}
+
+.exportButton {
+  border: 1px solid #7185d8;
+  border-radius: 7px;
+  padding: 8px 12px;
+  background: #293966;
+  color: #edf3ff;
+  font-family: var(--font);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px 0 0;
+}
+
+.card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #111a2a;
+  overflow: hidden;
+}
+
+.summary { grid-column: span 8; min-height: 220px; }
+.health { grid-column: span 4; }
+.stack { grid-column: span 5; }
+.dependencies { grid-column: span 7; }
+.entryPoints { grid-column: span 5; }
+.findings { grid-column: span 7; }
+.central { grid-column: span 12; }
+.testingCard { grid-column: span 12; }
+.git { grid-column: span 8; }
+.actions { grid-column: span 4; }
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cardHeader > span {
+  color: #7185d8;
+  font-size: 9px;
+}
+
+.cardHeader h3 {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cardHeader button {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #99aaff;
+  font-family: var(--font);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.summaryText {
+  padding: 16px;
+}
+
+.score {
+  display: flex;
+  align-items: baseline;
+  padding: 16px 16px 10px;
+}
+
+.score strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 52px;
+  font-weight: 400;
+  color: #edf3ff;
+}
+
+.score span {
+  color: #8792a9;
+  font-size: 11px;
+}
+
+.healthGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 8px 14px 14px;
+}
+
+.healthGrid div,
+.dependencyStats div {
+  display: grid;
+  gap: 4px;
+  border-radius: 7px;
+  padding: 9px;
+  background: #0d1523;
+}
+
+.healthGrid strong,
+.dependencyStats strong {
+  font-size: 15px;
+}
+
+.healthGrid span,
+.dependencyStats span {
+  color: #8792a9;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 14px;
+}
+
+.badges span {
+  display: flex;
+  gap: 8px;
+  border: 1px solid #293a5d;
+  border-radius: 20px;
+  padding: 7px 9px;
+  background: #0d1523;
+  color: #b7c3d8;
+  font-size: 9px;
+}
+
+.badges strong {
+  color: #99aaff;
+}
+
+.badges .framework {
+  border-color: #7185d8;
+  background: #293966;
+  color: #edf3ff;
+}
+
+.dependencyStats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 14px;
+}
+
+.fileList,
+.findingList,
+.centralList {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+}
+
+.fileList button,
+.findingList button,
+.centralList button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #0d1523;
+  color: #b7c3d8;
+  font-family: var(--font);
+  font-size: 9px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fileList button:hover,
+.findingList button:hover,
+.centralList button:hover {
+  border-color: #3a4e7d;
+  background: #121d2f;
+}
+
+.fileList button span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileList button b,
+.findingList button b {
+  color: #7185d8;
+  font-size: 9px;
+}
+
+.fileList p,
+.findingList p {
+  padding: 12px;
+  color: #8792a9;
+  font-size: 10px;
+}
+
+.severityRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px;
+}
+
+.severityRow div {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px;
+  background: #0d1523;
+}
+
+.severityRow strong {
+  font-size: 14px;
+}
+
+.severityRow span {
+  color: #8792a9;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.severityDot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: #60a5fa;
+}
+
+.severityDot.error { background: #f87171; }
+.severityDot.warning { background: #facc15; }
+.severityDot.info { background: #60a5fa; }
+
+.findingText {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+
+.findingText strong {
+  color: #d7dfef;
+  font-size: 9px;
+}
+
+.findingText small {
+  color: #8792a9;
+  font-size: 8px;
+}
+
+.centralList {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.centralList button {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.centralList button > span {
+  color: #7185d8;
+  font-size: 9px;
+}
+
+.centralList strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.centralList small {
+  color: #8792a9;
+  font-size: 8px;
+}
+
+.testingStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px;
+}
+
+.testingStats div {
+  display: grid;
+  gap: 4px;
+  border-radius: 8px;
+  padding: 12px;
+  background: #0d1523;
+}
+
+.testingStats strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.testingStats span,
+.testingDetails span {
+  color: #8792a9;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.testingDetails {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.testingDetails div {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #293a5d;
+  border-radius: 7px;
+  padding: 9px;
+}
+
+.testingDetails strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.untestedList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+
+.untestedList button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #293a5d;
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: #0d1523;
+  color: #cbd6ea;
+  font-family: var(--font);
+  font-size: 9px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.untestedList button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.untestedList button b {
+  color: #99aaff;
+}
+
+.commitList {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+}
+
+.commitList > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #0d1523;
+}
+
+.commitList code {
+  color: #99aaff;
+  font-size: 9px;
+}
+
+.commitList span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.commitList strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pullRequest {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #0d1523;
+  color: #cbd6ea;
+  text-decoration: none;
+}
+
+.pullRequest:hover {
+  border: 1px solid #3a4e7d;
+  background: #121d2f;
+}
+
+.commitList small,
+.gitEmpty {
+  color: #8792a9;
+  font-size: 8px;
+}
+
+.gitEmpty {
+  padding: 16px;
+}
+
+.actionButtons {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.actionButtons button {
+  border: 1px solid #7185d8;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #293966;
+  color: #edf3ff;
+  font-family: var(--font);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.actionButtons .danger {
+  border-color: #7c3f49;
+  background: #3a1d25;
+  color: #ffc1ca;
+}
+
+.scannerStatus {
+  display: grid;
+  gap: 5px;
+  padding: 0 12px 12px;
+}
+
+.scannerStatus p {
+  color: #8792a9;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.loading,
+.error {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #8792a9;
+}
+
+.error {
+  color: #f87171;
+}
+
+@media (max-width: 900px) {
+  .summary,
+  .health,
+  .stack,
+  .dependencies,
+  .entryPoints,
+  .findings,
+  .git,
+  .actions {
+    grid-column: span 12;
+  }
+
+  .centralList {
+    grid-template-columns: 1fr;
+  }
+
+  .testingStats,
+  .testingDetails,
+  .untestedList {
+    grid-template-columns: 1fr;
+  }
+}

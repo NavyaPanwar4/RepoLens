@@ -33,6 +33,12 @@ IMPORT_TYPES = {
     "package_declaration",
 }
 
+CALL_TYPES = {
+    "call",
+    "call_expression",
+    "invocation_expression",
+}
+
 
 def _get_parser(suffix: str):
     if suffix in PARSERS:
@@ -49,7 +55,9 @@ def _get_parser(suffix: str):
             lang = Language(tslang.language())
         elif suffix in (".ts", ".tsx"):
             import tree_sitter_typescript as m
-            lang = m.language_typescript() if suffix == ".ts" else m.language_tsx()
+            from tree_sitter import Language
+            capsule = m.language_typescript() if suffix == ".ts" else m.language_tsx()
+            lang = Language(capsule)
         elif suffix == ".java":
             import tree_sitter_java as tslang
             lang = Language(tslang.language())
@@ -93,6 +101,7 @@ def parse_file(path: Path) -> dict:
         "functions": [],
         "classes": [],
         "imports": [],
+        "calls": [],
         "raw": code_str,
     }
 
@@ -114,19 +123,32 @@ def parse_file(path: Path) -> dict:
         if node.type in FUNCTION_TYPES:
             result["functions"].append({
                 "name": _extract_name(node, code_bytes),
-                "start_line": node.start_point[0],
-                "end_line": node.end_point[0],
+                "start_line": node.start_point[0] + 1,
+                "end_line": node.end_point[0] + 1,
                 "body": code_bytes[node.start_byte:node.end_byte].decode(errors="ignore"),
             })
         elif node.type in CLASS_TYPES:
             result["classes"].append({
                 "name": _extract_name(node, code_bytes),
-                "start_line": node.start_point[0],
+                "start_line": node.start_point[0] + 1,
+                "end_line": node.end_point[0] + 1,
+                "body": code_bytes[node.start_byte:node.end_byte].decode(errors="ignore"),
             })
         elif node.type in IMPORT_TYPES:
             result["imports"].append(
                 code_bytes[node.start_byte:node.end_byte].decode(errors="ignore").strip()
             )
+        elif node.type in CALL_TYPES:
+            function_node = node.child_by_field_name("function")
+            if function_node is None:
+                function_node = node.child_by_field_name("name")
+            if function_node:
+                called = function_node.text.decode(errors="ignore").strip()
+                result["calls"].append({
+                    "name": called,
+                    "simple_name": called.split(".")[-1].strip(),
+                    "start_line": node.start_point[0] + 1,
+                })
         for child in node.children:
             walk(child)
 

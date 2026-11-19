@@ -104,7 +104,7 @@ def _check_python(filepath: str, lines: list, pf: dict) -> list:
         if length > 60:
             findings.append({
                 "file": filepath,
-                "line": fn["start_line"] + 1,
+                "line": fn["start_line"],
                 "severity": "warning",
                 "rule": "long-function",
                 "message": f"`{fn['name']}` is {length} lines long. Consider breaking it into smaller functions.",
@@ -184,6 +184,47 @@ def _check_universal(filepath: str, lines: list) -> list:
 
     for i, line in enumerate(lines):
         lineno = i + 1
+        stripped = line.strip()
+
+        if re.search(r"\beval\s*\(", stripped, re.IGNORECASE):
+            findings.append({
+                "file": filepath,
+                "line": lineno,
+                "severity": "error",
+                "rule": "unsafe-eval",
+                "message": "Dynamic code evaluation is dangerous and can enable code execution.",
+                "snippet": line.rstrip(),
+            })
+
+        if re.search(r"verify\s*=\s*false|curl\s+.*-k\b", stripped, re.IGNORECASE):
+            findings.append({
+                "file": filepath,
+                "line": lineno,
+                "severity": "warning",
+                "rule": "tls-verification-disabled",
+                "message": "TLS certificate verification is disabled or bypassed.",
+                "snippet": line.rstrip(),
+            })
+
+        if re.search(r"(execute|exec|cursor\.execute)\s*\([^)]*(?:\+|f[\"'])", stripped, re.IGNORECASE):
+            findings.append({
+                "file": filepath,
+                "line": lineno,
+                "severity": "warning",
+                "rule": "possible-sql-injection",
+                "message": "SQL appears to be constructed dynamically. Use parameterized queries.",
+                "snippet": line.rstrip(),
+            })
+
+        if re.search(r"(cors|access-control-allow-origin)\s*[:=].*['\"]\\*['\"]", stripped, re.IGNORECASE):
+            findings.append({
+                "file": filepath,
+                "line": lineno,
+                "severity": "warning",
+                "rule": "permissive-cors",
+                "message": "A wildcard CORS policy may expose APIs to unintended origins.",
+                "snippet": line.rstrip(),
+            })
 
         # Extremely long lines
         if len(line.rstrip()) > 300:

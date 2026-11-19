@@ -23,6 +23,9 @@
   padding: 14px 16px;
 }
 
+.assistant .bubble { width: 100%; min-width: min(560px, 60vw); }
+.user .bubble { max-width: 620px; }
+
 .user .bubble {
   background: var(--accent-dim);
   border-color: var(--accent);
@@ -59,4 +62,23 @@
   font-size: 11px;
   color: var(--text-muted);
   padding: 0 2px;
+}
+
+.openSource {
+  align-self: flex-start;
+  padding: 3px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.openSource:hover { background: var(--accent); color: #fff; }
+
+@media (max-width: 760px) {
+  .wrapper { max-width: 96%; }
+  .assistant .bubble { min-width: 0; }
 }

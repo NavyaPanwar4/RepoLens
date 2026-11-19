@@ -2,11 +2,12 @@ from pathlib import Path
 import hashlib
 
 MAX_CHUNK_CHARS = 1500
+RAW_CHUNK_OVERLAP = 200
 
 RAW_ONLY_EXTENSIONS = {
     ".html", ".css", ".scss", ".sass", ".less",
     ".md", ".txt", ".json", ".yaml", ".yml",
-    ".toml", ".xml", ".sh", ".bash",
+    ".toml", ".xml", ".sh", ".bash", ".lcov",
 }
 
 
@@ -43,7 +44,8 @@ def _chunk_raw_text(parsed: dict) -> list:
         return chunks
 
     # Sliding window for larger files
-    for i, start in enumerate(range(0, len(raw), MAX_CHUNK_CHARS)):
+    step = MAX_CHUNK_CHARS - RAW_CHUNK_OVERLAP
+    for i, start in enumerate(range(0, len(raw), step)):
         chunk_text = raw[start:start + MAX_CHUNK_CHARS]
         text = f"# File: {filename} (part {i + 1})\n\n{chunk_text}"
         chunks.append({
@@ -91,7 +93,8 @@ def chunk_parsed_file(parsed: dict) -> list:
     # Classes
     for cls in parsed.get("classes", []):
         base = f"{filepath}::cls::{cls['name']}::L{cls['start_line']}"
-        text = f"# Class: {cls['name']} in {Path(filepath).name}"
+        body = cls.get("body", "")[:MAX_CHUNK_CHARS]
+        text = f"# Class: {cls['name']} in {Path(filepath).name}\n{body}"
 
         chunks.append({
             "id": make_id(base, text),
